@@ -10,19 +10,23 @@
 
        DATA                                                    DIVISION.
        WORKING-STORAGE                                          SECTION.
-       01 WRK-NAME                PICTURE X(16)  VALUE SPACES.
-       01 WRK-BALANCE             PICTURE S9(10) VALUE ZEROS.
-       01 WRK-INIT-BALANCE        PICTURE S9(10) VALUE 2000.
        01 WRK-BALANCE-ED          PICTURE Z.ZZZ.ZZZ.ZZ9,99.
-       01 WRK-BANK-STATEMENT-COST PICTURE S9(02) VALUE 1.
-       01 WRK-DEPOSIT             PICTURE S9(10) VALUE ZEROS.
-       01 WRK-DT-FACTOR           PICTURE 9(02)  VALUE 2.
+       01 WRK-NAME                PICTURE X(16)        VALUE SPACES.
+       01 WRK-BALANCE             PICTURE S9(10)V9(02) COMP VALUE ZEROS.
+       01 WRK-INIT-BALANCE        PICTURE S9(10)V9(02) VALUE 2000.
+       01 WRK-BANK-STATEMENT-COST PICTURE S9(02)V9(02) VALUE 1.
+       01 WRK-DEPOSIT             PICTURE S9(10)V9(02) VALUE ZEROS.
+       01 WRK-DT-FACTOR           PICTURE S9(02)V9(02) VALUE 2.
+       01 WRK-INTEREST-RATE       PICTURE S9(02)V9(02) VALUE 0,05.
+       01 WRK-RES-IN              PICTURE S9(10)V9(02) COMP VALUE ZEROS.
 
        PROCEDURE                                              DIVISION.
            DISPLAY "Client Program".
            *> MOVE "Jonh Cornor" TO WRK-NAME.
            DISPLAY "Inform your name:".
-           ACCEPT WRK-NAME.
+           *> Just to simplify the tests
+           *> ACCEPT WRK-NAME.
+           MOVE "Jeff" TO WRK-NAME.
            MOVE WRK-INIT-BALANCE TO WRK-BALANCE.
            MOVE WRK-BALANCE TO WRK-BALANCE-ED
            DISPLAY "BALANCE IS " WRK-BALANCE-ED " FROM ACC. " WRK-NAME.
@@ -60,5 +64,13 @@
       *    ---- Better display
            MOVE WRK-BALANCE TO WRK-BALANCE-ED.
            DISPLAY "A better balance: R$" WRK-BALANCE-ED.
+           DISPLAY "--------------------------------------------------".
+
+      *    ---- Interest display
+           DISPLAY "WRK-BALANCE --> " WRK-BALANCE
+           COMPUTE WRK-RES-IN = WRK-BALANCE * (1 + WRK-INTEREST-RATE).
+           DISPLAY "WRK-RES-IN --> " WRK-RES-IN
+           MOVE WRK-RES-IN TO WRK-BALANCE-ED
+           DISPLAY "Your balance w/ interrest will be " WRK-BALANCE-ED.
 
            STOP      RUN.
