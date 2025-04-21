@@ -7,70 +7,130 @@
        CONFIGURATION                                            SECTION.
        SPECIAL-NAMES.
            DECIMAL-POINT IS COMMA.
+       INPUT-OUTPUT                                             SECTION.
+       FILE-CONTROL.
+           SELECT IFILCLI ASSIGN TO "./ifilcli.txt"
+               FILE STATUS IS FS-IFILCLI.
 
        DATA                                                    DIVISION.
+       FILE                                                     SECTION.
+       FD IFILCLI
+           RECORDING MODE IS F.
+       01 REGISTER.
+         05 REG-AGENCY            PICTURE X(04).
+         05 REG-ACCOUNT           PICTURE X(08).
+         05 REG-NAME              PICTURE X(32).
+         05 REG-MANAGER           PICTURE X(04).
+         05 REG-ACC-TYPE          PICTURE 9(02).
+         05 REG-BALANCE           PICTURE 9(16)V99.
+      * 68 POSITIONS AS IS IN 4 + 8 + 32 + 4 +2 + (16 + 2)
+      *  AGENCY   ACCOUNT  NAME       MANAGER  ACCOUNT-TYPE BALANCE
+      *  2344     45645    JONAS      003      1            15000
+
        WORKING-STORAGE                                          SECTION.
+       01 FS-IFILCLI              PICTURE 9(02).
+
+       01 WRK-BANK-STATEMENT-COST PICTURE S9(02)V9(02) VALUE 01,00.
+       01 WRK-INIT-BALANCE        PICTURE S9(10)V9(02) VALUE 2413,78.
        01 WRK-BALANCE-ED          PICTURE Z.ZZZ.ZZZ.ZZ9,99.
-       01 WRK-NAME                PICTURE X(16)        VALUE SPACES.
-       01 WRK-BALANCE             PICTURE S9(10)V9(02) COMP VALUE ZEROS.
-       01 WRK-INIT-BALANCE        PICTURE S9(10)V9(02) VALUE 2000.
-       01 WRK-BANK-STATEMENT-COST PICTURE S9(02)V9(02) VALUE 1.
-       01 WRK-DEPOSIT             PICTURE S9(10)V9(02) VALUE ZEROS.
-       01 WRK-DT-FACTOR           PICTURE S9(02)V9(02) VALUE 2.
-       01 WRK-INTEREST-RATE       PICTURE S9(02)V9(02) VALUE 0,05.
-       01 WRK-RES-IN              PICTURE S9(10)V9(02) COMP VALUE ZEROS.
 
-       PROCEDURE                                              DIVISION.
+       01 WRK-COUNTER             PICTURE 9(03) USAGE COMP VALUE ZEROES.
+       01 WRK-COUNTER-INDIV       PICTURE 9(03) USAGE COMP VALUE ZEROES.
+       01 WRK-COUNTER-BUSS        PICTURE 9(03) USAGE COMP VALUE ZEROES.
+       01 WRK-COUNTER-OTHER       PICTURE 9(03) USAGE COMP VALUE ZEROES.
+
+       PROCEDURE                                               DIVISION.
+       0100-MAIN                                                SECTION.
            DISPLAY "Client Program".
-           *> MOVE "Jonh Cornor" TO WRK-NAME.
-           DISPLAY "Inform your name:".
-           *> Just to simplify the tests
-           *> ACCEPT WRK-NAME.
-           MOVE "Jeff" TO WRK-NAME.
-           MOVE WRK-INIT-BALANCE TO WRK-BALANCE.
-           MOVE WRK-BALANCE TO WRK-BALANCE-ED
-           DISPLAY "BALANCE IS " WRK-BALANCE-ED " FROM ACC. " WRK-NAME.
+           PERFORM 0200-INIT.
+           PERFORM 0300-PROCESSING UNTIL FS-IFILCLI EQUAL 10.
+           PERFORM 9999-FINAL.
+           STOP RUN.
+       0100-END.                                                   EXIT.
+
+       0200-INIT                                                SECTION.
+           ADD 1 TO WRK-COUNTER.
+           PERFORM 0203-INIT-FILE-POPULATE.
+           DISPLAY "..................................................".
+       0200-END.                                                   EXIT.
+
+       0201-INIT-HARDCODED-POPULATE                             SECTION.
+           MOVE 1567 TO REG-ACCOUNT.
+           MOVE 10756985 TO REG-ACCOUNT.
+           MOVE "Jonh Cornor" TO REG-NAME.
+           MOVE 6752 TO REG-MANAGER.
+           MOVE 1 TO REG-ACC-TYPE.
+           MOVE WRK-INIT-BALANCE TO REG-BALANCE.
+       0201-END.                                                   EXIT.
+
+       0202-INIT-ASKIING-POPULATE                               SECTION.
+           DISPLAY "Inform your AGENCY:".
+           ACCEPT REG-AGENCY.
+           DISPLAY "Inform your ACCOUNT:".
+           ACCEPT REG-ACCOUNT.
+           DISPLAY "Inform your NAME:".
+           ACCEPT REG-NAME.
+           DISPLAY "Inform your MANAGER:".
+           ACCEPT REG-MANAGER.
+           DISPLAY "Inform your ACC-TYPE:".
+           ACCEPT REG-ACC-TYPE.
+           DISPLAY "Inform your BALANCE:".
+           ACCEPT REG-BALANCE.
+       0202-END.                                                   EXIT.
+
+       0203-INIT-FILE-POPULATE                                  SECTION.
+           OPEN INPUT IFILCLI.
+           IF FS-IFILCLI NOT EQUAL ZEROS
+               DISPLAY "FILE WAS NOT OPENED!!"
+               GOBACK
+           END-IF.
+
+           PERFORM 0210-READ.
+       0203-END.                                                   EXIT.
+
+       0210-READ                                                SECTION.
+           READ IFILCLI.
+       0210-END.                                                   EXIT.
+
+       0300-PROCESSING                                          SECTION.
+      *    ---- Print balance and pay the fee
+           MOVE REG-BALANCE TO WRK-BALANCE-ED.
+           DISPLAY "You have in your account R$ " WRK-BALANCE-ED.
+           SUBTRACT WRK-BANK-STATEMENT-COST FROM REG-BALANCE.
+           MOVE REG-BALANCE TO WRK-BALANCE-ED.
+           DISPLAY "After fee R$ " WRK-BALANCE-ED.
+
+           PERFORM 0700-DECISION.
+
+           *> DISPLAY REGISTER.
+           PERFORM 0210-READ.
+
+           DISPLAY "==================================================".
+       0300-END.                                                   EXIT.
+
+       0700-DECISION                                            SECTION.
+      *    ---- Decision structure
+           EVALUATE REG-ACC-TYPE
+               WHEN 1
+                   DISPLAY "You choosed INDIVIDUAL account type."
+                   ADD 1 TO WRK-COUNTER-INDIV
+               WHEN 2
+                   DISPLAY "You choosed BUSINESS account type."
+                   ADD 1 TO WRK-COUNTER-BUSS
+               WHEN OTHER
+                   DISPLAY "You choosed WRONG acc type - Use 1 or 2!!"
+                   ADD 1 TO WRK-COUNTER-OTHER
+           END-EVALUATE
            DISPLAY "--------------------------------------------------".
+       0700-END.                                                   EXIT.
 
-      *    ---- Bank Statement
-           DISPLAY "Bank statement cost is " WRK-BANK-STATEMENT-COST.
-           SUBTRACT WRK-BANK-STATEMENT-COST FROM WRK-BALANCE.
-           MOVE WRK-BALANCE TO WRK-BALANCE-ED
-           DISPLAY "Your actual balance is " WRK-BALANCE-ED.
+       9999-FINAL                                               SECTION.
+           CLOSE IFILCLI.
            DISPLAY "--------------------------------------------------".
-
-      *    ---- Deposit
-           DISPLAY "Please, inform total to add to your account:".
-           ACCEPT WRK-DEPOSIT
-           ADD WRK-DEPOSIT TO WRK-BALANCE.
-           MOVE WRK-BALANCE TO WRK-BALANCE-ED
-           DISPLAY "Now, your acc balance is: " WRK-BALANCE-ED.
+           DISPLAY "------------------- STATISTICS -------------------".
            DISPLAY "--------------------------------------------------".
-
-      *    ---- Multiply by factor
-           DISPLAY "Oh! You missied the bonus factor: " WRK-DT-FACTOR.
-           MULTIPLY WRK-DEPOSIT BY WRK-DT-FACTOR GIVING WRK-DEPOSIT.
-           MOVE WRK-DEPOSIT TO WRK-BALANCE-ED
-           DISPLAY "Your deposit should: " WRK-BALANCE-ED.
-           DISPLAY "--------------------------------------------------".
-
-      *    ---- Divided by factor
-           DISPLAY "Just Kidding!! ".
-           DIVIDE WRK-DEPOSIT BY WRK-DT-FACTOR GIVING WRK-DEPOSIT.
-           MOVE WRK-DEPOSIT TO WRK-BALANCE-ED
-           DISPLAY "Your REAL deposit is correct: " WRK-BALANCE-ED.
-           DISPLAY "--------------------------------------------------".
-
-      *    ---- Better display
-           MOVE WRK-BALANCE TO WRK-BALANCE-ED.
-           DISPLAY "A better balance: R$" WRK-BALANCE-ED.
-           DISPLAY "--------------------------------------------------".
-
-      *    ---- Interest display
-           DISPLAY "WRK-BALANCE --> " WRK-BALANCE
-           COMPUTE WRK-RES-IN = WRK-BALANCE * (1 + WRK-INTEREST-RATE).
-           DISPLAY "WRK-RES-IN --> " WRK-RES-IN
-           MOVE WRK-RES-IN TO WRK-BALANCE-ED
-           DISPLAY "Your balance w/ interrest will be " WRK-BALANCE-ED.
-
-           STOP      RUN.
+           DISPLAY "WRK-COUNTER:       " WRK-COUNTER.
+           DISPLAY "WRK-COUNTER-INDIV: " WRK-COUNTER-INDIV.
+           DISPLAY "WRK-COUNTER-BUSS : " WRK-COUNTER-BUSS.
+           DISPLAY "WRK-COUNTER-OTHER: " WRK-COUNTER-OTHER.
+       9999-END.                                                   EXIT.
