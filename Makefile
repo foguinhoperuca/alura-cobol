@@ -2,28 +2,40 @@
 
 clean:
 	@clear
-	@rm -f MAIN
-	@rm -f MAIN.so
-	@rm -f CLIENTS
-	@rm -f CLIENTS.so
+	@rm -f bin/MAIN
+	@rm -f bin/MAIN.so
+	@rm -f bin/CLIENTS
+	@rm -f bin/CLIENTS.so
+	@rm -f bin/CRM
+	@rm -f bin/CRM.so
 	@rm -f *~
 
 MAIN: clean 
-	cobc -x MAIN.COB
+	cobc -x -o bin/MAIN MAIN.COB
 
 CLIENTS: clean 
-	cobc -x CLIENTS.COB
+	cobc -x -o bin/CLIENT CLIENTS.COB
+
+CRM: clean 
+	cobc -x -o bin/CRM CRM.COB
+
+run-crm: CRM
+	@echo "=================="
+	@echo "|| Running MAIN ||"
+	@echo "=================="
+	@./bin/CRM
 
 run-main: MAIN
 	@echo "=================="
 	@echo "|| Running MAIN ||"
 	@echo "=================="
-	@./MAIN
+	@./bin/MAIN
 
 run-clients: CLIENTS
 	@echo "------------------"
 	@echo "| Running CLIENT |"
 	@echo "------------------"
-	@./CLIENTS
+	@./bin/CLIENTS
 
 run: run-main run-clients
+
